@@ -1,0 +1,65 @@
+import numpy as np
+import skfuzzy as fuzz
+from skfuzzy import control as ctrl
+
+# Function to create linguistic variable with triangular membership functions
+def create_variable(universe, name, low, high):
+    variable = ctrl.Antecedent(universe, name)
+    variable['low'] = fuzz.trimf(variable.universe, [low, low, (low + high) / 2])
+    variable['medium'] = fuzz.trimf(variable.universe, [low, (low + high) / 2, high])
+    variable['high'] = fuzz.trimf(variable.universe, [(low + high) / 2, high, high])
+    return variable
+
+# Function to create fuzzy rule
+def create_rule(variable, output):
+    return ctrl.Rule(variable['low'], output['low']), ctrl.Rule(variable['medium'], output['medium']), ctrl.Rule(variable['high'], output['high'])
+
+# Function to create a fuzzy control system
+def create_fuzzy_system(rule):
+    return ctrl.ControlSystem(rule)
+
+# Function to perform a fuzzy analysis
+def fuzzy_analysis(system, input_keywords):
+    try:
+        # Set linguistic variable based on the student's answer with adjusted weights
+        system.input['relevance'] = 0.64 * sum(2 if keyword in input_keywords else 0 for keyword in ['critical', 'integral', 'decisions', 'implementing', 'actions'])
+
+        # Compute the result
+        system.compute()
+
+        # Print the membership values for the relevance linguistic variable
+        print("\nRelevance Analysis:")
+        print(f"Membership value for relevance: {system.input['relevance'].get_association()[0].view(sim=system)}")
+
+        # Get the defuzzified output
+        output_proficiency = system.output['output']
+
+        # Print the results
+        print("\nUpdated Fuzzy Output (Proficiency):")
+        print(f"The student's proficiency level is: {output_proficiency:.2f}%")
+
+    except Exception as e:
+        print(f"An error occurred: {e}")
+
+# Define linguistic variables and fuzzy sets
+relevance_universe = np.arange(0, 11, 1)
+output_universe = np.arange(0, 101, 1)
+
+relevance = create_variable(relevance_universe, 'relevance', 0, 10)
+output = ctrl.Consequent(output_universe, 'output', defuzzify_method='centroid')
+output['low'] = fuzz.trimf(output.universe, [0, 0, 50])
+output['medium'] = fuzz.trimf(output.universe, [0, 50, 100])
+output['high'] = fuzz.trimf(output.universe, [50, 100, 100])
+
+# Create fuzzy rule
+rule = create_rule(relevance, output)
+
+# Create fuzzy control system
+fuzzy_ctrl = create_fuzzy_system(rule)
+fuzzy_system = ctrl.ControlSystemSimulation(fuzzy_ctrl)
+
+# Set sample input based on the student's answer
+input_keywords = ['critical', 'integral', 'decisions', 'implementing', 'actions']
+
+# Perform fuzzy analysis
+fuzzy_analysis(fuzzy_system, input_keywords)
